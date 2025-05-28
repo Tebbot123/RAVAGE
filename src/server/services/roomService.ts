@@ -16,47 +16,66 @@ export class RoomService implements OnStart {
 	buffer = new CircularBuffer<Room>(10);
 
 	onStart(): void {
-		while (wait(5)[0]) {
-			this.generateRooms();
+		this.generateRooms();
+
+		while (wait(1)[0]) {
+			this.addRoom();
 		}
 	}
 
 	generateRooms() {
-		let clonedRoom: Room | undefined;
-		for (let i = 0; i < this.roomLength / 2; i++) {
-			clonedRoom = this.cloneRandomRoom();
-			clonedRoom.Name = tostring(this.counter);
-			if (!clonedRoom.PrimaryPart) {
-				clonedRoom.Destroy();
-				continue;
-			}
-
-			// Positioning
-			const lastRoom = this.buffer.last();
-
-			if (lastRoom) {
-				this.positionRoom(clonedRoom, lastRoom);
-				while (this.checkOverlap(clonedRoom)) {
-					clonedRoom = this.cloneRandomRoom();
-					clonedRoom.Name = tostring(this.counter);
-					if (!clonedRoom.PrimaryPart) {
-						clonedRoom.Destroy();
-						continue;
-					}
-					task.wait();
-				}
-			}
-
-			const removed = this.buffer.enqueue(clonedRoom);
-			clonedRoom.Parent = RenderedRooms;
-
-			if (removed) {
-				removed.Destroy();
-			}
-
-			this.counter++;
+		for (let i = 0; i < this.roomLength; i++) {
+			this.addRoom();
 		}
-		clonedRoom = undefined;
+	}
+
+	addRoom() {
+		const lastRoom = this.buffer.last();
+		print(lastRoom);
+
+		let clonedRoom: Room | undefined;
+		clonedRoom = this.cloneRandomRoom();
+		clonedRoom.Name = tostring(this.counter);
+		if (!clonedRoom.PrimaryPart) {
+			clonedRoom.Destroy();
+			while (this.checkOverlap(clonedRoom)) {
+				clonedRoom.Destroy();
+				clonedRoom = this.cloneRandomRoom();
+				clonedRoom.Name = tostring(this.counter);
+				if (!clonedRoom.PrimaryPart) {
+					clonedRoom.Destroy();
+					continue;
+				}
+				this.positionRoom(clonedRoom, lastRoom);
+				task.wait();
+			}
+		}
+
+		// Positioning
+
+		if (lastRoom) {
+			this.positionRoom(clonedRoom, lastRoom);
+			while (this.checkOverlap(clonedRoom)) {
+				clonedRoom.Destroy();
+				clonedRoom = this.cloneRandomRoom();
+				clonedRoom.Name = tostring(this.counter);
+				if (!clonedRoom.PrimaryPart) {
+					clonedRoom.Destroy();
+					continue;
+				}
+				this.positionRoom(clonedRoom, lastRoom);
+				task.wait();
+			}
+		}
+
+		const removed = this.buffer.enqueue(clonedRoom);
+		clonedRoom.Parent = RenderedRooms;
+
+		if (removed) {
+			removed.Destroy();
+		}
+
+		this.counter++;
 	}
 
 	private checkOverlap(newRoom: Room): boolean {
@@ -76,6 +95,8 @@ export class RoomService implements OnStart {
 
 		for (let i = 0; i < MainChildren.size(); i++) {
 			if (Workspace.GetPartsInPart(MainChildren[i], overlapParams).size() > 0) {
+				newRoom.Parent = Workspace;
+
 				return true;
 			}
 		}
@@ -85,7 +106,6 @@ export class RoomService implements OnStart {
 
 	private positionRoom(newRoom: Room, lastRoom: Room) {
 		const connectionRight = lastRoom.FindFirstChild("ConnectionRight") as BasePart;
-		const connectionLeft = newRoom.PrimaryPart;
 
 		newRoom.PivotTo(connectionRight.CFrame);
 	}

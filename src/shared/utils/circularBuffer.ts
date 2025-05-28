@@ -45,7 +45,8 @@ export default class CircularBuffer<T> {
 	}
 
 	last() {
-		return this.buffer[this.tail - 1];
+		const tail = (this.tail - 1) % this.capacity;
+		return this.buffer[tail];
 	}
 
 	peek() {
